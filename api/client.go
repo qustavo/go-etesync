@@ -157,7 +157,16 @@ func (c *Client) Journals() (Journals, error) {
 	return dst, nil
 }
 
-func (c *Client) Journal(uid string) (Entries, error) {
+func (c *Client) Journal(uid string) (*Journal, error) {
+	dst := Journal{}
+	if _, err := c.get("api/v1/journals/"+uid, &dst); err != nil {
+		return nil, err
+	}
+
+	return &dst, nil
+}
+
+func (c *Client) JournalEntries(uid string) (Entries, error) {
 	dst := Entries{}
 	if _, err := c.get("api/v1/journals/"+uid+"/entries", &dst); err != nil {
 		return nil, err

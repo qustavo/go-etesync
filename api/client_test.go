@@ -30,7 +30,7 @@ func TestClient(t *testing.T) {
 		require.NoError(t, err)
 		log.Printf("journal: %s", string(dec))
 
-		es, err := c.Journal(j.UID)
+		es, err := c.JournalEntries(j.UID)
 		require.NoError(t, err)
 
 		for _, e := range es {
