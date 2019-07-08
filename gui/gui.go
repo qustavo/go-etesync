@@ -120,19 +120,31 @@ func (gui *GUI) onJournalSelect(j *api.Journal) error {
 			return err
 		}
 
+		var icon string
+		switch content.Action {
+		case "ADD":
+			icon = "✔"
+		case "DELETE":
+			icon = "✖"
+		case "CHANGE":
+			icon = "↪"
+		default:
+			icon = content.Action
+		}
 		switch node.Name {
 		case "VCARD":
 			// set headers
 			if i == 0 {
-				setTableHeaders(gui.entries, "Name", "Phone")
+				setTableHeaders(gui.entries, "", "Name", "Phone")
 			}
 
-			gui.entries.SetCellSimple(i+1, 0, node.PropString("FN", "<N/A>"))
-			gui.entries.SetCellSimple(i+1, 1, node.PropString("TEL", ""))
+			gui.entries.SetCellSimple(i+1, 0, icon)
+			gui.entries.SetCellSimple(i+1, 1, node.PropString("FN", "<N/A>"))
+			gui.entries.SetCellSimple(i+1, 2, node.PropString("TEL", ""))
 		case "VCALENDAR", "VTODO":
 			// set headers
 			if i == 0 {
-				setTableHeaders(gui.entries, "Summary", "Date")
+				setTableHeaders(gui.entries, "", "Summary", "Date")
 			}
 
 			child := node.ChildByName("VTODO")
@@ -141,9 +153,10 @@ func (gui *GUI) onJournalSelect(j *api.Journal) error {
 			}
 
 			if child != nil {
-				gui.entries.SetCellSimple(i+1, 0, child.PropString("SUMMARY", "X"))
+				gui.entries.SetCellSimple(i+1, 0, icon)
+				gui.entries.SetCellSimple(i+1, 1, child.PropString("SUMMARY", ""))
 				when := child.PropDate("DTSTAMP", time.Time{})
-				gui.entries.SetCellSimple(i+1, 1, when.String())
+				gui.entries.SetCellSimple(i+1, 2, when.String())
 			}
 		default:
 			panic(node.Name)
