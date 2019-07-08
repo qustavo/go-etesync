@@ -10,8 +10,43 @@ import (
 	"github.com/rivo/tview"
 )
 
-func newJournalTable(c *api.Client, key []byte, fn func(*api.Journal)) (*tview.Table, error) {
-	js, err := c.Journals()
+type GUI struct {
+	app      *tview.Application
+	entries  *tview.Table
+	journals *tview.Table
+
+	c   *api.Client
+	key []byte
+}
+
+func NewGUI(c *api.Client, key []byte) *GUI {
+	gui := &GUI{
+		app: tview.NewApplication(),
+		c:   c,
+		key: key,
+	}
+
+	return gui
+}
+
+func (gui *GUI) newEntries() *tview.Table {
+	t := tview.NewTable().SetSelectable(true, false)
+	t.SetBorder(true)
+
+	t.SetInputCapture(func(e *tcell.EventKey) *tcell.EventKey {
+		switch e.Key() {
+		case tcell.KeyLeft, tcell.KeyTAB:
+			gui.app.SetFocus(gui.journals)
+		}
+
+		return e
+	})
+
+	return t
+}
+
+func (gui *GUI) newJournals() (*tview.Table, error) {
+	js, err := gui.c.Journals()
 	if err != nil {
 		return nil, err
 	}
@@ -21,7 +56,7 @@ func newJournalTable(c *api.Client, key []byte, fn func(*api.Journal)) (*tview.T
 
 	uids := make([]*api.Journal, len(js))
 	for i, j := range js {
-		content, err := j.GetContent(key)
+		content, err := j.GetContent(gui.key)
 		if err != nil {
 			return nil, err
 		}
@@ -42,87 +77,76 @@ func newJournalTable(c *api.Client, key []byte, fn func(*api.Journal)) (*tview.T
 
 	t.SetSelectedFunc(func(row, col int) {
 		j := uids[row]
-		fn(j)
+		err := gui.onJournalSelect(j)
+		if err != nil {
+			log.Fatal(err)
+		}
 	})
 
 	return t, nil
 }
 
-func newEntryTable(c *api.Client, key []byte, j *api.Journal) (*tview.Table, error) {
-	t := tview.NewTable().SetSelectable(true, false)
-	t.SetBorder(true)
-	return t, nil
+func (gui *GUI) onJournalSelect(j *api.Journal) error {
+	es, err := gui.c.JournalEntries(j.UID)
+	if err != nil {
+		return err
+	}
+
+	jc, err := j.GetContent(gui.key)
+	if err != nil {
+		log.Fatal(err)
+	}
+	gui.entries.SetTitle(string(jc.Type))
+	gui.app.SetFocus(gui.entries)
+
+	gui.entries.Clear()
+	for i, e := range es {
+		content, err := e.GetContent(j, gui.key)
+		if err != nil {
+			return err
+		}
+
+		node, err := ical.ParseCalendar(content.Content)
+		if err != nil {
+			return err
+		}
+
+		switch node.Name {
+		case "VCARD":
+			gui.entries.SetCellSimple(i, 0, node.PropString("FN", "<N/A>"))
+			gui.entries.SetCellSimple(i, 1, node.PropString("TEL", ""))
+		case "VCALENDAR", "VTODO":
+			child := node.ChildByName("VTODO")
+			if child == nil {
+				child = node.ChildByName("VEVENT")
+			}
+
+			if child != nil {
+				gui.entries.SetCellSimple(i, 0, child.PropString("SUMMARY", "X"))
+				when := child.PropDate("DTSTAMP", time.Time{})
+				gui.entries.SetCellSimple(i, 1, when.String())
+			}
+		}
+	}
+	return nil
+}
+
+func (gui *GUI) Start() error {
+	gui.entries = gui.newEntries()
+
+	var err error
+	gui.journals, err = gui.newJournals()
+	if err != nil {
+		return err
+	}
+
+	flex := tview.NewFlex().
+		AddItem(gui.journals, 0, 1, true).
+		AddItem(gui.entries, 0, 2, false)
+
+	return gui.app.SetRoot(flex, true).Run()
 }
 
 func Start(c *api.Client, key []byte) error {
-	app := tview.NewApplication()
-
-	entries, err := newEntryTable(c, key, nil)
-	if err != nil {
-		return err
-	}
-
-	fn := func(j *api.Journal) {
-		es, err := c.JournalEntries(j.UID)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		jc, err := j.GetContent(key)
-		if err != nil {
-			log.Fatal(err)
-		}
-		entries.SetTitle(string(jc.Type))
-		app.SetFocus(entries)
-
-		entries.Clear()
-		for i, e := range es {
-			content, err := e.GetContent(j, key)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			node, err := ical.ParseCalendar(content.Content)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			switch node.Name {
-			case "VCARD":
-				entries.SetCellSimple(i, 0, node.PropString("FN", "<N/A>"))
-				entries.SetCellSimple(i, 1, node.PropString("TEL", ""))
-			case "VCALENDAR", "VTODO":
-				child := node.ChildByName("VTODO")
-				if child == nil {
-					child = node.ChildByName("VEVENT")
-				}
-
-				if child != nil {
-					entries.SetCellSimple(i, 0, child.PropString("SUMMARY", "X"))
-					when := child.PropDate("DTSTAMP", time.Time{})
-					entries.SetCellSimple(i, 1, when.String())
-				}
-			}
-		}
-	}
-
-	journals, err := newJournalTable(c, key, fn)
-	if err != nil {
-		return err
-	}
-
-	entries.SetInputCapture(func(e *tcell.EventKey) *tcell.EventKey {
-		switch e.Key() {
-		case tcell.KeyLeft, tcell.KeyTAB:
-			app.SetFocus(journals)
-		}
-
-		return e
-	})
-
-	flex := tview.NewFlex().
-		AddItem(journals, 0, 1, true).
-		AddItem(entries, 0, 2, false)
-
-	return app.SetRoot(flex, true).Run()
+	return NewGUI(c, key).Start()
 }
