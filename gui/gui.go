@@ -30,7 +30,7 @@ func NewGUI(c *api.Client, key []byte) *GUI {
 }
 
 func (gui *GUI) newEntries() *tview.Table {
-	t := tview.NewTable().SetSelectable(true, false)
+	t := tview.NewTable().SetSelectable(true, false).SetFixed(1, 1)
 	t.SetBorder(true)
 
 	t.SetInputCapture(func(e *tcell.EventKey) *tcell.EventKey {
@@ -86,6 +86,15 @@ func (gui *GUI) newJournals() (*tview.Table, error) {
 	return t, nil
 }
 
+func setTableHeaders(t *tview.Table, headers ...string) {
+	for i, s := range headers {
+		cell := tview.NewTableCell(s).
+			SetSelectable(false).
+			SetTextColor(tcell.ColorGray)
+		t.SetCell(0, i, cell)
+	}
+}
+
 func (gui *GUI) onJournalSelect(j *api.Journal) error {
 	es, err := gui.c.JournalEntries(j.UID)
 	if err != nil {
@@ -113,20 +122,35 @@ func (gui *GUI) onJournalSelect(j *api.Journal) error {
 
 		switch node.Name {
 		case "VCARD":
-			gui.entries.SetCellSimple(i, 0, node.PropString("FN", "<N/A>"))
-			gui.entries.SetCellSimple(i, 1, node.PropString("TEL", ""))
+			// set headers
+			if i == 0 {
+				setTableHeaders(gui.entries, "Name", "Phone")
+			}
+
+			gui.entries.SetCellSimple(i+1, 0, node.PropString("FN", "<N/A>"))
+			gui.entries.SetCellSimple(i+1, 1, node.PropString("TEL", ""))
 		case "VCALENDAR", "VTODO":
+			// set headers
+			if i == 0 {
+				setTableHeaders(gui.entries, "Summary", "Date")
+			}
+
 			child := node.ChildByName("VTODO")
 			if child == nil {
 				child = node.ChildByName("VEVENT")
 			}
 
 			if child != nil {
-				gui.entries.SetCellSimple(i, 0, child.PropString("SUMMARY", "X"))
+				gui.entries.SetCellSimple(i+1, 0, child.PropString("SUMMARY", "X"))
 				when := child.PropDate("DTSTAMP", time.Time{})
-				gui.entries.SetCellSimple(i, 1, when.String())
+				gui.entries.SetCellSimple(i+1, 1, when.String())
 			}
+		default:
+			panic(node.Name)
 		}
+
+		gui.entries.Select(1, 0)
+		gui.entries.ScrollToBeginning()
 	}
 	return nil
 }
