@@ -3,10 +3,8 @@ package api
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 
 	"github.com/gchaincl/go-etesync/crypto"
-	"github.com/laurent22/ical-go"
 )
 
 type Journal struct {
@@ -34,7 +32,23 @@ func (j *Journal) DerivedKey(password []byte) ([]byte, error) {
 	return key, nil
 }
 
-func (j *Journal) GetContent(password []byte) ([]byte, error) {
+type JournalType string
+
+const (
+	JournalCalendar    JournalType = "CALENDAR"
+	JournalAddressBook             = "ADDRESS_BOOK"
+	JournalTasks                   = "TASKS"
+)
+
+type JournalContent struct {
+	Type        JournalType `json:"type"`
+	Version     int         `json:"version"`
+	Selected    bool        `json:"selected"`
+	DisplayName string      `json:"displayName"`
+	Color       int         `json:"color"`
+}
+
+func (j *Journal) GetContent(password []byte) (*JournalContent, error) {
 	content, err := base64.StdEncoding.DecodeString(j.Content)
 	if err != nil {
 		return nil, err
@@ -45,7 +59,17 @@ func (j *Journal) GetContent(password []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return crypto.New([]byte(j.UID), key).Decrypt(content[32:])
+	data, err := crypto.New([]byte(j.UID), key).Decrypt(content[32:])
+	if err != nil {
+		return nil, err
+	}
+
+	jc := &JournalContent{}
+	if err := json.Unmarshal(data, jc); err != nil {
+		return nil, err
+	}
+
+	return jc, nil
 }
 
 type Journals []*Journal
@@ -55,7 +79,7 @@ type Entry struct {
 	Content string `json:"content"`
 }
 
-func (e *Entry) GetContent(j *Journal, password []byte) ([]byte, error) {
+func (e *Entry) GetContent(j *Journal, password []byte) (*EntryContent, error) {
 	content, err := base64.StdEncoding.DecodeString(e.Content)
 	if err != nil {
 		return nil, err
@@ -66,7 +90,17 @@ func (e *Entry) GetContent(j *Journal, password []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return crypto.New([]byte(j.UID), key).Decrypt(content)
+	data, err := crypto.New([]byte(j.UID), key).Decrypt(content)
+	if err != nil {
+		return nil, err
+	}
+
+	ec := &EntryContent{}
+	if err := json.Unmarshal(data, ec); err != nil {
+		return nil, err
+	}
+
+	return ec, nil
 }
 
 type Entries []Entry
@@ -74,19 +108,4 @@ type Entries []Entry
 type EntryContent struct {
 	Action  string
 	Content string
-}
-
-func PrintEntry(data []byte) error {
-	ec := &EntryContent{}
-	if err := json.Unmarshal(data, ec); err != nil {
-		return err
-	}
-
-	node, err := ical.ParseCalendar(ec.Content)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(node.String())
-	return nil
 }

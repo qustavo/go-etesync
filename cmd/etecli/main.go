@@ -6,6 +6,7 @@ import (
 
 	"github.com/gchaincl/go-etesync/api"
 	"github.com/gchaincl/go-etesync/gui"
+	"github.com/laurent22/ical-go"
 	"github.com/urfave/cli"
 )
 
@@ -149,7 +150,13 @@ func JournalEntries(c *api.Client, uid string, key []byte) error {
 		}
 
 		fmt.Printf("UID: %s\n", e.UID)
-		api.PrintEntry(content)
+		node, err := ical.ParseCalendar(content.Content)
+		if err != nil {
+			return err
+
+		}
+		c := node.ChildByName("VEVENT")
+		fmt.Printf("%s", c.PropString("SUMMARY", "XXX"))
 		fmt.Printf("-----\n")
 	}
 
