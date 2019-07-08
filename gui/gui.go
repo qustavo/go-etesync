@@ -109,7 +109,10 @@ func (gui *GUI) onJournalSelect(j *api.Journal) error {
 	gui.app.SetFocus(gui.entries)
 
 	gui.entries.Clear()
-	for i, e := range es {
+	for i := 0; i < len(es); i++ {
+		// as entries are sorted from older to newer we get them from newer to older
+		e := es[len(es)-i-1]
+
 		content, err := e.GetContent(j, gui.key)
 		if err != nil {
 			return err
