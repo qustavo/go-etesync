@@ -36,8 +36,7 @@ func NewApp() *App {
 				if err != nil {
 					return nil
 				}
-				key := []byte(ctx.GlobalString("key"))
-				return Journals(c, key)
+				return Journals(c)
 			},
 		},
 		cli.Command{
@@ -98,18 +97,14 @@ func newClientFromCtx(ctx *cli.Context) (*api.Client, error) {
 	return api.NewClient(ctx.GlobalString("email"), ctx.GlobalString("password"))
 }
 
-func Journals(c *api.Client, key []byte) error {
+func Journals(c *api.Client) error {
 	js, err := c.Journals()
 	if err != nil {
 		return err
 	}
 
 	for _, j := range js {
-		content, err := j.GetContent(key)
-		if err != nil {
-			return err
-		}
-		fmt.Printf("<Journal uid:%s\n     content: %s>\n", j.UID, content)
+		fmt.Printf("<Journal uid:%s>\n", j.UID)
 	}
 
 	return nil
@@ -126,9 +121,10 @@ func Journal(c *api.Client, uid string, key []byte) error {
 		return err
 	}
 
-	fmt.Printf("content  :%s\n", content)
-	fmt.Printf("owner    :%s\n", j.Owner)
-	fmt.Printf("read-only:%v\n", j.ReadOnly)
+	fmt.Printf("name     : %s\n", content.DisplayName)
+	fmt.Printf("type     : %s\n", content.Type)
+	fmt.Printf("owner    : %s\n", j.Owner)
+	fmt.Printf("read-only: %v\n", j.ReadOnly)
 
 	return nil
 }
