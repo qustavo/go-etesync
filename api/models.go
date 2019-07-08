@@ -1,7 +1,13 @@
 package api
 
-import "encoding/base64"
-import "github.com/gchaincl/go-etesync/crypto"
+import (
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+
+	"github.com/gchaincl/go-etesync/crypto"
+	"github.com/laurent22/ical-go"
+)
 
 type Journal struct {
 	Version  int    `json:"version"`
@@ -60,7 +66,27 @@ func (e *Entry) GetContent(j *Journal, password []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return crypto.New([]byte(j.UID), key).Decrypt(content[32:])
+	return crypto.New([]byte(j.UID), key).Decrypt(content)
 }
 
 type Entries []Entry
+
+type EntryContent struct {
+	Action  string
+	Content string
+}
+
+func PrintEntry(data []byte) error {
+	ec := &EntryContent{}
+	if err := json.Unmarshal(data, ec); err != nil {
+		return err
+	}
+
+	node, err := ical.ParseCalendar(ec.Content)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(node.String())
+	return nil
+}
