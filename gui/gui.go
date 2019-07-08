@@ -6,6 +6,7 @@ import (
 
 	"github.com/gchaincl/go-etesync/api"
 	"github.com/gdamore/tcell"
+	"github.com/kofoworola/godate"
 	"github.com/laurent22/ical-go"
 	"github.com/rivo/tview"
 )
@@ -159,7 +160,8 @@ func (gui *GUI) onJournalSelect(j *api.Journal) error {
 				gui.entries.SetCellSimple(i+1, 0, icon)
 				gui.entries.SetCellSimple(i+1, 1, child.PropString("SUMMARY", ""))
 				when := child.PropDate("DTSTAMP", time.Time{})
-				gui.entries.SetCellSimple(i+1, 2, when.String())
+				diff := godate.Create(when).DifferenceFromNowForHumans()
+				gui.entries.SetCellSimple(i+1, 2, diff)
 			}
 		default:
 			panic(node.Name)
