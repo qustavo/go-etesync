@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gchaincl/go-etesync/api"
+	"github.com/gdamore/tcell"
 	"github.com/laurent22/ical-go"
 	"github.com/rivo/tview"
 )
@@ -49,11 +50,13 @@ func newJournalTable(c *api.Client, key []byte, fn func(*api.Journal)) (*tview.T
 
 func newEntryTable(c *api.Client, key []byte, j *api.Journal) (*tview.Table, error) {
 	t := tview.NewTable().SetSelectable(true, false)
-	t.SetTitle("Entries").SetBorder(true)
+	t.SetBorder(true)
 	return t, nil
 }
 
 func Start(c *api.Client, key []byte) error {
+	app := tview.NewApplication()
+
 	entries, err := newEntryTable(c, key, nil)
 	if err != nil {
 		return err
@@ -64,6 +67,13 @@ func Start(c *api.Client, key []byte) error {
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		jc, err := j.GetContent(key)
+		if err != nil {
+			log.Fatal(err)
+		}
+		entries.SetTitle(string(jc.Type))
+		app.SetFocus(entries)
 
 		entries.Clear()
 		for i, e := range es {
@@ -95,12 +105,21 @@ func Start(c *api.Client, key []byte) error {
 			}
 		}
 	}
+
 	journals, err := newJournalTable(c, key, fn)
 	if err != nil {
 		return err
 	}
 
-	app := tview.NewApplication()
+	entries.SetInputCapture(func(e *tcell.EventKey) *tcell.EventKey {
+		switch e.Key() {
+		case tcell.KeyLeft, tcell.KeyTAB:
+			app.SetFocus(journals)
+		}
+
+		return e
+	})
+
 	flex := tview.NewFlex().
 		AddItem(journals, 0, 1, true).
 		AddItem(entries, 0, 2, false)

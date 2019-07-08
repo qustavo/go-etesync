@@ -19,12 +19,13 @@ func NewApp() *App {
 	app := &App{}
 
 	app.cli = cli.NewApp()
+	app.cli.Version = "0.0.1"
 	app.cli.Name = "etecli"
 	app.cli.Usage = "ETESync cli tool"
 	app.cli.Flags = []cli.Flag{
-		cli.StringFlag{Name: "email"},
-		cli.StringFlag{Name: "password"},
-		cli.StringFlag{Name: "key", Usage: "Encryption key"},
+		cli.StringFlag{Name: "email", Usage: "login email", EnvVar: "ETESYNC_EMAIL"},
+		cli.StringFlag{Name: "password", Usage: "login password", EnvVar: "ETESYNC_EMAIL"},
+		cli.StringFlag{Name: "key", Usage: "Encryption key", EnvVar: "ETESYNC_KEY"},
 	}
 
 	app.cli.Commands = []cli.Command{
