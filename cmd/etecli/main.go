@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/gchaincl/go-etesync/api"
+	"github.com/gchaincl/go-etesync/gui"
 	"github.com/urfave/cli"
 )
 
@@ -74,6 +75,18 @@ func NewApp() *App {
 				return JournalEntries(c, uid, key)
 			},
 		},
+		cli.Command{
+			Name: "gui", Usage: "Interactive gui",
+			Action: func(ctx *cli.Context) error {
+				c, err := newClientFromCtx(ctx)
+				if err != nil {
+					return err
+				}
+
+				key := []byte(ctx.GlobalString("key"))
+				return StartGUI(c, key)
+			},
+		},
 	}
 
 	return app
@@ -141,6 +154,10 @@ func JournalEntries(c *api.Client, uid string, key []byte) error {
 	}
 
 	return nil
+}
+
+func StartGUI(c *api.Client, key []byte) error {
+	return gui.Start(c, key)
 }
 
 func (app *App) Run() { app.cli.RunAndExitOnError() }
