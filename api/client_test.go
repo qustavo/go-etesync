@@ -22,21 +22,21 @@ func TestClient(t *testing.T) {
 	js, err := c.Journals()
 	require.NoError(t, err)
 
-	enc := []byte(k)
+	key, err := DeriveKey(u, []byte(k))
 	require.NoError(t, err)
 
 	for _, j := range js {
-		dec, err := j.GetContent(enc)
+		dec, err := j.GetContent(key)
 		require.NoError(t, err)
-		log.Printf("journal: %s", string(dec))
+		log.Printf("journal: %v", dec)
 
 		es, err := c.JournalEntries(j.UID)
 		require.NoError(t, err)
 
 		for _, e := range es {
-			dec, err := e.GetContent(j, enc)
+			dec, err := e.GetContent(key)
 			require.NoError(t, err)
-			log.Printf("entry: %s", string(dec))
+			log.Printf("entry: %v", dec)
 		}
 	}
 }

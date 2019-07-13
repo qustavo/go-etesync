@@ -114,7 +114,7 @@ func (gui *GUI) onJournalSelect(j *api.Journal) error {
 		// as entries are sorted from older to newer we get them from newer to older
 		e := es[len(es)-i-1]
 
-		content, err := e.GetContent(j, gui.key)
+		content, err := e.GetContent(gui.key)
 		if err != nil {
 			return err
 		}

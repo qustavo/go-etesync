@@ -2,8 +2,8 @@ package storetest
 
 import (
 	"testing"
-	"time"
 
+	"github.com/gchaincl/go-etesync/api"
 	"github.com/gchaincl/go-etesync/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,9 +16,8 @@ func TestSuite(t *testing.T, f Factory) {
 		name string
 		run  func(*testing.T, store.Store)
 	}{
-		{"Entity/CreateContact", TestEntityCreateContact},
-		{"Entity/ContactNotFound", TestEntityContactNotFound},
-		{"Entity/CreateEvent", TestEntityCreateEvent},
+		{"Entry/Create", TestEntryCreate},
+		{"Entry/NotFound", TestEntryNotFound},
 	}
 
 	for _, test := range tests {
@@ -31,37 +30,21 @@ func TestSuite(t *testing.T, f Factory) {
 	}
 }
 
-func TestEntityCreateContact(t *testing.T, s store.Store) {
-	c := &store.Contact{
-		UID: "abcd", Name: "alice", Phone: "123123123",
-	}
+func TestEntryCreate(t *testing.T, s store.Store) {
+	e := &api.Entry{UID: "abcd", Content: "data"}
 
-	err := s.CreateContact(c)
+	err := s.CreateEntry(e)
 	require.NoError(t, err)
 
-	found, err := s.GetContact(c.UID)
-	require.NoError(t, err)
-
-	assert.Equal(t, c, found)
-}
-
-func TestEntityContactNotFound(t *testing.T, s store.Store) {
-	notFound, err := s.GetContact("abcd")
-	require.Error(t, err)
-	assert.Equal(t, store.ErrRecordNotFound, err)
-	assert.Nil(t, notFound)
-}
-
-func TestEntityCreateEvent(t *testing.T, s store.Store) {
-	e := &store.Event{
-		UID: "abcd", Summary: "test", Date: time.Date(2009, 1, 3, 0, 0, 0, 0, time.UTC),
-	}
-
-	err := s.CreateEvent(e)
-	require.NoError(t, err)
-
-	found, err := s.GetEvent(e.UID)
+	found, err := s.GetEntry(e.UID)
 	require.NoError(t, err)
 
 	assert.Equal(t, e, found)
+}
+
+func TestEntryNotFound(t *testing.T, s store.Store) {
+	notFound, err := s.GetEntry("abcd")
+	require.Error(t, err)
+	assert.Equal(t, store.ErrRecordNotFound, err)
+	assert.Nil(t, notFound)
 }

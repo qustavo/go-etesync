@@ -1,28 +1,19 @@
 package store
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/gchaincl/go-etesync/api"
+)
 
 var (
 	ErrRecordNotFound = errors.New("record not found")
 )
 
-type JournalStore interface {
-	CreateJournal(*Journal) error
+type Store interface {
+	CreateJournal(*api.Journal) error
 	GetJournal()
 
-	CreateEntry()
-	GetEntry()
-}
-
-type EntityStore interface {
-	CreateContact(*Contact) error
-	GetContact(uid string) (*Contact, error)
-
-	CreateEvent(*Event) error
-	GetEvent(uid string) (*Event, error)
-}
-
-type Store interface {
-	JournalStore
-	EntityStore
+	CreateEntry(*api.Entry) error
+	GetEntry(uid string) (*api.Entry, error)
 }

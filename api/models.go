@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 
 	"github.com/gchaincl/go-etesync/crypto"
 )
@@ -14,22 +15,6 @@ type Journal struct {
 	Owner    string `json:"owner"`
 	Key      string `json:"key"`
 	ReadOnly bool   `json:"readOnly"`
-
-	derivedKey []byte
-}
-
-func (j *Journal) DerivedKey(password []byte) ([]byte, error) {
-	if j.derivedKey != nil {
-		return j.derivedKey, nil
-	}
-
-	key, err := crypto.DeriveKey(password, []byte(j.Owner))
-	if err != nil {
-		return nil, err
-	}
-
-	j.derivedKey = key
-	return key, nil
 }
 
 type JournalType string
@@ -48,13 +33,8 @@ type JournalContent struct {
 	Color       int         `json:"color"`
 }
 
-func (j *Journal) GetContent(password []byte) (*JournalContent, error) {
+func (j *Journal) GetContent(key []byte) (*JournalContent, error) {
 	content, err := base64.StdEncoding.DecodeString(j.Content)
-	if err != nil {
-		return nil, err
-	}
-
-	key, err := j.DerivedKey(password)
 	if err != nil {
 		return nil, err
 	}
@@ -75,22 +55,26 @@ func (j *Journal) GetContent(password []byte) (*JournalContent, error) {
 type Journals []*Journal
 
 type Entry struct {
+	journal *Journal
 	UID     string `json:"uid"`
 	Content string `json:"content"`
 }
 
-func (e *Entry) GetContent(j *Journal, password []byte) (*EntryContent, error) {
+func NewEntry(j *Journal) *Entry { return &Entry{journal: j} }
+
+func (e *Entry) Journal() *Journal { return e.journal }
+
+func (e *Entry) GetContent(key []byte) (*EntryContent, error) {
+	if e.journal == nil {
+		return nil, errors.New(".Journal can't be nil")
+	}
+
 	content, err := base64.StdEncoding.DecodeString(e.Content)
 	if err != nil {
 		return nil, err
 	}
 
-	key, err := j.DerivedKey(password)
-	if err != nil {
-		return nil, err
-	}
-
-	data, err := crypto.New([]byte(j.UID), key).Decrypt(content)
+	data, err := crypto.New([]byte(e.journal.UID), key).Decrypt(content)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +87,22 @@ func (e *Entry) GetContent(j *Journal, password []byte) (*EntryContent, error) {
 	return ec, nil
 }
 
-type Entries []Entry
+func (e *Entry) SetContent(c *EntryContent, key []byte) error {
+	json, err := json.Marshal(c)
+	if err != nil {
+		return err
+	}
+
+	data, err := crypto.New([]byte(e.journal.UID), key).Encrypt(json)
+	if err != nil {
+		return err
+	}
+
+	e.Content = base64.StdEncoding.EncodeToString(data)
+	return nil
+}
+
+type Entries []*Entry
 
 type EntryContent struct {
 	Action  string

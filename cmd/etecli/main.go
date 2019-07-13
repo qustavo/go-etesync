@@ -32,7 +32,7 @@ func NewApp() *App {
 		cli.Command{
 			Name: "journals", Usage: "Display available journals", Category: "api",
 			Action: func(ctx *cli.Context) error {
-				c, err := newClientFromCtx(ctx)
+				c, _, err := newClientFromCtx(ctx)
 				if err != nil {
 					return nil
 				}
@@ -46,14 +46,12 @@ func NewApp() *App {
 					return errors.New("missing [uid]")
 				}
 
-				c, err := newClientFromCtx(ctx)
+				c, key, err := newClientFromCtx(ctx)
 				if err != nil {
 					return nil
 				}
 
 				uid := ctx.Args()[0]
-				key := []byte(ctx.GlobalString("key"))
-
 				return Journal(c, uid, key)
 			},
 		},
@@ -65,26 +63,23 @@ func NewApp() *App {
 					return errors.New("missing [uid]")
 				}
 
-				c, err := newClientFromCtx(ctx)
+				c, key, err := newClientFromCtx(ctx)
 				if err != nil {
 					return nil
 				}
 
 				uid := ctx.Args()[0]
-				key := []byte(ctx.GlobalString("key"))
-
 				return JournalEntries(c, uid, key)
 			},
 		},
 		cli.Command{
 			Name: "gui", Usage: "Interactive gui",
 			Action: func(ctx *cli.Context) error {
-				c, err := newClientFromCtx(ctx)
+				c, key, err := newClientFromCtx(ctx)
 				if err != nil {
 					return err
 				}
 
-				key := []byte(ctx.GlobalString("key"))
 				return StartGUI(c, key)
 			},
 		},
@@ -93,8 +88,19 @@ func NewApp() *App {
 	return app
 }
 
-func newClientFromCtx(ctx *cli.Context) (*api.Client, error) {
-	return api.NewClient(ctx.GlobalString("email"), ctx.GlobalString("password"))
+func newClientFromCtx(ctx *cli.Context) (*api.Client, []byte, error) {
+	email := ctx.GlobalString("email")
+	cl, err := api.NewClient(email, ctx.GlobalString("password"))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	key, err := api.DeriveKey(email, []byte(ctx.GlobalString("key")))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return cl, key, nil
 }
 
 func Journals(c *api.Client) error {
@@ -141,7 +147,7 @@ func JournalEntries(c *api.Client, uid string, key []byte) error {
 	}
 
 	for _, e := range es {
-		content, err := e.GetContent(j, key)
+		content, err := e.GetContent(key)
 		if err != nil {
 			return err
 		}
