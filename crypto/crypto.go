@@ -20,16 +20,16 @@ func hmac256(salt, key []byte) []byte {
 
 const blockSize = aes.BlockSize
 
-// Crypto performs crypto operations using AES
-type Crypto struct {
+// Cipher performs cipher operations using AES
+type Cipher struct {
 	cipherKey []byte
 	hmacKey   []byte
 }
 
 // New returns a ne crypto object
-func New(salt, key []byte) *Crypto {
+func New(salt, key []byte) *Cipher {
 	h := hmac256(salt, key)
-	m := &Crypto{
+	m := &Cipher{
 		cipherKey: hmac256([]byte("aes"), h),
 		hmacKey:   hmac256([]byte("hmac"), h),
 	}
@@ -38,7 +38,7 @@ func New(salt, key []byte) *Crypto {
 }
 
 // Encrypt encrypts data
-func (c *Crypto) Encrypt(data []byte) ([]byte, error) {
+func (c *Cipher) Encrypt(data []byte) ([]byte, error) {
 	block, err := aes.NewCipher(c.cipherKey)
 	if err != nil {
 		return nil, err
@@ -62,7 +62,7 @@ func (c *Crypto) Encrypt(data []byte) ([]byte, error) {
 }
 
 // Decrypt decrypts previously encrypted data
-func (c *Crypto) Decrypt(data []byte) ([]byte, error) {
+func (c *Cipher) Decrypt(data []byte) ([]byte, error) {
 	iv, ciphertext := data[:blockSize], data[blockSize:]
 
 	block, err := aes.NewCipher(c.cipherKey)

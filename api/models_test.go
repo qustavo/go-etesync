@@ -8,12 +8,13 @@ import (
 )
 
 func TestEntryContentEncryption(t *testing.T) {
-	pass := []byte("password")
-
 	jn := &Journal{UID: "abcd", Owner: "some@email"}
 	ec := &EntryContent{Action: "ADD", Content: "string"}
 
-	en := NewEntry(jn)
+	key := []byte("encryption key")
+	cipher := crypo.New(jn.UID, key
+
+	en := &Entry{}
 	err := en.SetContent(ec, pass)
 	require.NoError(t, err)
 

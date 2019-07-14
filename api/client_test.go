@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/gchaincl/go-etesync/crypto"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,7 +27,8 @@ func TestClient(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, j := range js {
-		dec, err := j.GetContent(key)
+		cipher := crypto.New([]byte(j.UID), key)
+		dec, err := j.GetContent(cipher)
 		require.NoError(t, err)
 		log.Printf("journal: %v", dec)
 
@@ -34,7 +36,7 @@ func TestClient(t *testing.T) {
 		require.NoError(t, err)
 
 		for _, e := range es {
-			dec, err := e.GetContent(key)
+			dec, err := e.GetContent(cipher)
 			require.NoError(t, err)
 			log.Printf("entry: %v", dec)
 		}

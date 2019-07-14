@@ -167,18 +167,9 @@ func (c *Client) Journal(uid string) (*Journal, error) {
 }
 
 func (c *Client) JournalEntries(uid string) (Entries, error) {
-	j, err := c.Journal(uid)
-	if err != nil {
-		return nil, err
-	}
-
 	dst := Entries{}
 	if _, err := c.get("api/v1/journals/"+uid+"/entries", &dst); err != nil {
 		return nil, err
-	}
-
-	for _, e := range dst {
-		e.journal = j
 	}
 
 	return dst, nil

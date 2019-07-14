@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/gchaincl/go-etesync/api"
+	"github.com/gchaincl/go-etesync/crypto"
 	"github.com/gchaincl/go-etesync/gui"
 	"github.com/laurent22/ical-go"
 	"github.com/urfave/cli"
@@ -122,7 +123,8 @@ func Journal(c *api.Client, uid string, key []byte) error {
 		return err
 	}
 
-	content, err := j.GetContent(key)
+	cipher := crypto.New([]byte(uid), key)
+	content, err := j.GetContent(cipher)
 	if err != nil {
 		return err
 	}
@@ -136,18 +138,15 @@ func Journal(c *api.Client, uid string, key []byte) error {
 }
 
 func JournalEntries(c *api.Client, uid string, key []byte) error {
-	j, err := c.Journal(uid)
+	es, err := c.JournalEntries(uid)
 	if err != nil {
 		return err
 	}
 
-	es, err := c.JournalEntries(j.UID)
-	if err != nil {
-		return err
-	}
+	cipher := crypto.New([]byte(uid), key)
 
 	for _, e := range es {
-		content, err := e.GetContent(key)
+		content, err := e.GetContent(cipher)
 		if err != nil {
 			return err
 		}
@@ -158,9 +157,8 @@ func JournalEntries(c *api.Client, uid string, key []byte) error {
 			return err
 
 		}
-		c := node.ChildByName("VEVENT")
-		fmt.Printf("%s", c.PropString("SUMMARY", "XXX"))
-		fmt.Printf("-----\n")
+
+		fmt.Printf("VCard %s", node)
 	}
 
 	return nil

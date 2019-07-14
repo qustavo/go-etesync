@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gchaincl/go-etesync/api"
+	"github.com/gchaincl/go-etesync/crypto"
 	"github.com/gdamore/tcell"
 	"github.com/kofoworola/godate"
 	"github.com/laurent22/ical-go"
@@ -57,7 +58,8 @@ func (gui *GUI) newJournals() (*tview.Table, error) {
 
 	uids := make([]*api.Journal, len(js))
 	for i, j := range js {
-		content, err := j.GetContent(gui.key)
+		cipher := crypto.New([]byte(j.UID), gui.key)
+		content, err := j.GetContent(cipher)
 		if err != nil {
 			return nil, err
 		}
@@ -102,7 +104,8 @@ func (gui *GUI) onJournalSelect(j *api.Journal) error {
 		return err
 	}
 
-	jc, err := j.GetContent(gui.key)
+	cipher := crypto.New([]byte(j.UID), gui.key)
+	jc, err := j.GetContent(cipher)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -114,7 +117,7 @@ func (gui *GUI) onJournalSelect(j *api.Journal) error {
 		// as entries are sorted from older to newer we get them from newer to older
 		e := es[len(es)-i-1]
 
-		content, err := e.GetContent(gui.key)
+		content, err := e.GetContent(cipher)
 		if err != nil {
 			return err
 		}

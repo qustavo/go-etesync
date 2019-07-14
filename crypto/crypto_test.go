@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCrypto(t *testing.T) {
+func TestCipher(t *testing.T) {
 	m := New([]byte("salt"), []byte("key"))
 	plaintext := []byte("0000000000000000X")
 	enc, err := m.Encrypt(plaintext)

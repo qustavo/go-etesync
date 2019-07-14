@@ -3,7 +3,6 @@ package api
 import (
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 
 	"github.com/gchaincl/go-etesync/crypto"
 )
@@ -33,13 +32,13 @@ type JournalContent struct {
 	Color       int         `json:"color"`
 }
 
-func (j *Journal) GetContent(key []byte) (*JournalContent, error) {
+func (j *Journal) GetContent(cipher *crypto.Cipher) (*JournalContent, error) {
 	content, err := base64.StdEncoding.DecodeString(j.Content)
 	if err != nil {
 		return nil, err
 	}
 
-	data, err := crypto.New([]byte(j.UID), key).Decrypt(content[32:])
+	data, err := cipher.Decrypt(content[32:])
 	if err != nil {
 		return nil, err
 	}
@@ -55,26 +54,17 @@ func (j *Journal) GetContent(key []byte) (*JournalContent, error) {
 type Journals []*Journal
 
 type Entry struct {
-	journal *Journal
 	UID     string `json:"uid"`
 	Content string `json:"content"`
 }
 
-func NewEntry(j *Journal) *Entry { return &Entry{journal: j} }
-
-func (e *Entry) Journal() *Journal { return e.journal }
-
-func (e *Entry) GetContent(key []byte) (*EntryContent, error) {
-	if e.journal == nil {
-		return nil, errors.New(".Journal can't be nil")
-	}
-
+func (e *Entry) GetContent(cipher *crypto.Cipher) (*EntryContent, error) {
 	content, err := base64.StdEncoding.DecodeString(e.Content)
 	if err != nil {
 		return nil, err
 	}
 
-	data, err := crypto.New([]byte(e.journal.UID), key).Decrypt(content)
+	data, err := cipher.Decrypt(content)
 	if err != nil {
 		return nil, err
 	}
@@ -87,13 +77,13 @@ func (e *Entry) GetContent(key []byte) (*EntryContent, error) {
 	return ec, nil
 }
 
-func (e *Entry) SetContent(c *EntryContent, key []byte) error {
+func (e *Entry) SetContent(c *EntryContent, cipher *crypto.Cipher) error {
 	json, err := json.Marshal(c)
 	if err != nil {
 		return err
 	}
 
-	data, err := crypto.New([]byte(e.journal.UID), key).Encrypt(json)
+	data, err := cipher.Encrypt(json)
 	if err != nil {
 		return err
 	}
