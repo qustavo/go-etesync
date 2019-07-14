@@ -14,6 +14,7 @@ type Store interface {
 	CreateJournal(*api.Journal) error
 	GetJournal()
 
-	CreateEntry(*api.Entry) error
-	GetEntry(uid string) (*api.Entry, error)
+	CreateEntry(journalUID string, entry *api.Entry) error
+	GetEntry(journalUID string, entryUID string) (*api.Entry, error)
+	LastEntry(journalUID string) (*api.Entry, error)
 }

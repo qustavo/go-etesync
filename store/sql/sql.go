@@ -6,19 +6,31 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
+type Entry struct {
+	ID         uint   `gorm:"primary_key"`
+	JournalUID string `gorm:"index:journal_uid;not null"`
+	*api.Entry
+}
+
 type Store struct {
 	db *gorm.DB
 }
 
 func NewStore(driver, dsn string) (*Store, error) {
 	db, err := gorm.Open(driver, dsn)
-	return &Store{db: db}, err
+	return &Store{db: db.Debug()}, err
 }
 
 func (s *Store) Migrate() error {
-	return s.db.AutoMigrate(
-		&api.Entry{},
+	err := s.db.AutoMigrate(
+		&api.Journal{},
+		&Entry{},
 	).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *Store) Close() {
@@ -46,14 +58,30 @@ func (s *Store) GetJournal() {
 	panic("not implemented")
 }
 
-func (s *Store) CreateEntry(e *api.Entry) error {
-	return s.db.Create(e).Error
+func (s *Store) CreateEntry(j string, e *api.Entry) error {
+	return s.db.Create(
+		&Entry{JournalUID: j, Entry: e},
+	).Error
 }
 
-func (s *Store) GetEntry(uid string) (*api.Entry, error) {
+func (s *Store) GetEntry(j string, uid string) (*api.Entry, error) {
 	var e = &api.Entry{}
 	if err := s.first("uid = ?", uid, e); err != nil {
 		return nil, err
 	}
 	return e, nil
+}
+
+func (s *Store) LastEntry(j string) (*api.Entry, error) {
+	var e Entry
+	db := s.db.Last(&e, "journal_uid = ?", j)
+	if db.RecordNotFound() {
+		return nil, store.ErrRecordNotFound
+	}
+
+	if err := db.Error; err != nil {
+		return nil, err
+	}
+
+	return e.Entry, nil
 }

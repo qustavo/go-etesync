@@ -18,6 +18,7 @@ func TestSuite(t *testing.T, f Factory) {
 	}{
 		{"Entry/Create", TestEntryCreate},
 		{"Entry/NotFound", TestEntryNotFound},
+		{"Entry/Last", TestLastEntry},
 	}
 
 	for _, test := range tests {
@@ -33,18 +34,37 @@ func TestSuite(t *testing.T, f Factory) {
 func TestEntryCreate(t *testing.T, s store.Store) {
 	e := &api.Entry{UID: "abcd", Content: "data"}
 
-	err := s.CreateEntry(e)
+	err := s.CreateEntry("parent", e)
 	require.NoError(t, err)
 
-	found, err := s.GetEntry(e.UID)
+	found, err := s.GetEntry("parent", e.UID)
 	require.NoError(t, err)
 
 	assert.Equal(t, e, found)
 }
 
 func TestEntryNotFound(t *testing.T, s store.Store) {
-	notFound, err := s.GetEntry("abcd")
+	notFound, err := s.GetEntry("parent", "abcd")
 	require.Error(t, err)
 	assert.Equal(t, store.ErrRecordNotFound, err)
 	assert.Nil(t, notFound)
+}
+
+func TestLastEntry(t *testing.T, s store.Store) {
+	entries := api.Entries{
+		&api.Entry{UID: "01"},
+		&api.Entry{UID: "02"},
+		&api.Entry{UID: "03"},
+		&api.Entry{UID: "04"},
+		&api.Entry{UID: "05"},
+		&api.Entry{UID: "06"},
+	}
+	for _, e := range entries {
+		err := s.CreateEntry("parent", e)
+		require.NoError(t, err)
+
+		found, err := s.LastEntry("parent")
+		require.NoError(t, err)
+		assert.Equal(t, e.UID, found.UID)
+	}
 }
