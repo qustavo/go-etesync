@@ -17,14 +17,14 @@ type GUI struct {
 	entries  *tview.Table
 	journals *tview.Table
 
-	c   *api.Client
+	api api.Client
 	key []byte
 }
 
-func NewGUI(c *api.Client, key []byte) *GUI {
+func NewGUI(client api.Client, key []byte) *GUI {
 	gui := &GUI{
 		app: tview.NewApplication(),
-		c:   c,
+		api: client,
 		key: key,
 	}
 
@@ -48,7 +48,7 @@ func (gui *GUI) newEntries() *tview.Table {
 }
 
 func (gui *GUI) newJournals() (*tview.Table, error) {
-	js, err := gui.c.Journals()
+	js, err := gui.api.Journals()
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func setTableHeaders(t *tview.Table, headers ...string) {
 }
 
 func (gui *GUI) onJournalSelect(j *api.Journal) error {
-	es, err := gui.c.JournalEntries(j.UID)
+	es, err := gui.api.JournalEntries(j.UID)
 	if err != nil {
 		return err
 	}
@@ -192,6 +192,6 @@ func (gui *GUI) Start() error {
 	return gui.app.SetRoot(flex, true).Run()
 }
 
-func Start(c *api.Client, key []byte) error {
+func Start(c api.Client, key []byte) error {
 	return NewGUI(c, key).Start()
 }

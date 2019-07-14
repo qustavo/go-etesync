@@ -89,7 +89,7 @@ func NewApp() *App {
 	return app
 }
 
-func newClientFromCtx(ctx *cli.Context) (*api.Client, []byte, error) {
+func newClientFromCtx(ctx *cli.Context) (*api.HTTPClient, []byte, error) {
 	email := ctx.GlobalString("email")
 	cl, err := api.NewClient(email, ctx.GlobalString("password"))
 	if err != nil {
@@ -104,7 +104,7 @@ func newClientFromCtx(ctx *cli.Context) (*api.Client, []byte, error) {
 	return cl, key, nil
 }
 
-func Journals(c *api.Client) error {
+func Journals(c api.Client) error {
 	js, err := c.Journals()
 	if err != nil {
 		return err
@@ -117,7 +117,7 @@ func Journals(c *api.Client) error {
 	return nil
 }
 
-func Journal(c *api.Client, uid string, key []byte) error {
+func Journal(c api.Client, uid string, key []byte) error {
 	j, err := c.Journal(uid)
 	if err != nil {
 		return err
@@ -137,7 +137,7 @@ func Journal(c *api.Client, uid string, key []byte) error {
 	return nil
 }
 
-func JournalEntries(c *api.Client, uid string, key []byte) error {
+func JournalEntries(c api.Client, uid string, key []byte) error {
 	es, err := c.JournalEntries(uid)
 	if err != nil {
 		return err
@@ -164,7 +164,7 @@ func JournalEntries(c *api.Client, uid string, key []byte) error {
 	return nil
 }
 
-func StartGUI(c *api.Client, key []byte) error {
+func StartGUI(c api.Client, key []byte) error {
 	return gui.Start(c, key)
 }
 
