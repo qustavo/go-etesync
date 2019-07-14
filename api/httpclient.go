@@ -168,9 +168,13 @@ func (c *HTTPClient) Journal(uid string) (*Journal, error) {
 	return &dst, nil
 }
 
-func (c *HTTPClient) JournalEntries(uid string) (Entries, error) {
+func (c *HTTPClient) JournalEntries(uid string, last *string) (Entries, error) {
 	dst := Entries{}
-	if _, err := c.get("api/v1/journals/"+uid+"/entries", &dst); err != nil {
+	target := "api/v1/journals/" + uid + "/entries"
+	if last != nil {
+		target += "?last=" + *last
+	}
+	if _, err := c.get(target, &dst); err != nil {
 		return nil, err
 	}
 

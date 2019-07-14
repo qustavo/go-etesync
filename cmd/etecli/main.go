@@ -59,6 +59,9 @@ func NewApp() *App {
 
 		cli.Command{
 			Name: "entries", Usage: "displays entries given a journal uid", Category: "api", ArgsUsage: "[uid]",
+			Flags: []cli.Flag{
+				cli.StringFlag{Name: "last", Usage: "get entries after <last> uid"},
+			},
 			Action: func(ctx *cli.Context) error {
 				if ctx.NArg() != 1 {
 					return errors.New("missing [uid]")
@@ -70,7 +73,8 @@ func NewApp() *App {
 				}
 
 				uid := ctx.Args()[0]
-				return JournalEntries(c, uid, key)
+				last := ctx.String("last")
+				return JournalEntries(c, uid, last, key)
 			},
 		},
 		cli.Command{
@@ -137,8 +141,13 @@ func Journal(c api.Client, uid string, key []byte) error {
 	return nil
 }
 
-func JournalEntries(c api.Client, uid string, key []byte) error {
-	es, err := c.JournalEntries(uid)
+func JournalEntries(c api.Client, uid string, last string, key []byte) error {
+	var arg *string = nil
+	if last != "" {
+		arg = &last
+	}
+
+	es, err := c.JournalEntries(uid, arg)
 	if err != nil {
 		return err
 	}

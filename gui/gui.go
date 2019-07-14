@@ -99,7 +99,7 @@ func setTableHeaders(t *tview.Table, headers ...string) {
 }
 
 func (gui *GUI) onJournalSelect(j *api.Journal) error {
-	es, err := gui.api.JournalEntries(j.UID)
+	es, err := gui.api.JournalEntries(j.UID, nil)
 	if err != nil {
 		return err
 	}
