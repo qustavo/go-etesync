@@ -5,7 +5,9 @@ import (
 	"time"
 
 	"github.com/gchaincl/go-etesync/api"
+	"github.com/gchaincl/go-etesync/cache"
 	"github.com/gchaincl/go-etesync/crypto"
+	"github.com/gchaincl/go-etesync/store"
 	"github.com/gdamore/tcell"
 	"github.com/kofoworola/godate"
 	"github.com/laurent22/ical-go"
@@ -192,6 +194,9 @@ func (gui *GUI) Start() error {
 	return gui.app.SetRoot(flex, true).Run()
 }
 
-func Start(c api.Client, key []byte) error {
+func Start(c api.Client, s store.Store, key []byte) error {
+	if err := cache.New(s, c).Sync(); err != nil {
+		return err
+	}
 	return NewGUI(c, key).Start()
 }

@@ -18,7 +18,7 @@ type Store struct {
 
 func NewStore(driver, dsn string) (*Store, error) {
 	db, err := gorm.Open(driver, dsn)
-	return &Store{db: db.Debug()}, err
+	return &Store{db: db}, err
 }
 
 func (s *Store) Migrate() error {
@@ -70,6 +70,20 @@ func (s *Store) GetEntry(j string, uid string) (*api.Entry, error) {
 		return nil, err
 	}
 	return e, nil
+}
+
+func (s *Store) GetEntries(j string) (api.Entries, error) {
+	var entries api.Entries
+	db := s.db.Find(&entries, "journal_uid = ?", j)
+	if db.RecordNotFound() {
+		return nil, nil
+	}
+
+	if err := db.Error; err != nil {
+		return nil, err
+	}
+
+	return entries, nil
 }
 
 func (s *Store) LastEntry(j string) (*api.Entry, error) {

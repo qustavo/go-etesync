@@ -1,6 +1,7 @@
 package storetest
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/gchaincl/go-etesync/api"
@@ -19,6 +20,7 @@ func TestSuite(t *testing.T, f Factory) {
 		{"Entry/Create", TestEntryCreate},
 		{"Entry/NotFound", TestEntryNotFound},
 		{"Entry/Last", TestLastEntry},
+		{"Entry/GetEntries", TestEntryGetEntries},
 	}
 
 	for _, test := range tests {
@@ -67,4 +69,26 @@ func TestLastEntry(t *testing.T, s store.Store) {
 		require.NoError(t, err)
 		assert.Equal(t, e.UID, found.UID)
 	}
+}
+
+func TestEntryGetEntries(t *testing.T, s store.Store) {
+	total := 100
+	for i := 0; i < total; i++ {
+		e := &api.Entry{UID: fmt.Sprintf("uid%d", i)}
+
+		require.NoError(t, s.CreateEntry("uid-a", e))
+		require.NoError(t, s.CreateEntry("uid-b", e))
+
+	}
+
+	entries, err := s.GetEntries("uid-a")
+	require.NoError(t, err)
+
+	assert.Len(t, entries, total)
+
+	t.Run("empty entries", func(t *testing.T) {
+		entries, err := s.GetEntries("uid-xxx")
+		require.NoError(t, err)
+		assert.Len(t, entries, 0)
+	})
 }

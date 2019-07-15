@@ -7,7 +7,10 @@ import (
 	"github.com/gchaincl/go-etesync/api"
 	"github.com/gchaincl/go-etesync/crypto"
 	"github.com/gchaincl/go-etesync/gui"
+	"github.com/gchaincl/go-etesync/store"
+	"github.com/gchaincl/go-etesync/store/sql"
 	"github.com/laurent22/ical-go"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/urfave/cli"
 )
 
@@ -85,7 +88,16 @@ func NewApp() *App {
 					return err
 				}
 
-				return StartGUI(c, key)
+				s, err := sql.NewStore("sqlite3", "/tmp/etesync.db")
+				if err != nil {
+					return err
+				}
+
+				if err := s.Migrate(); err != nil {
+					return err
+				}
+
+				return StartGUI(c, s, key)
 			},
 		},
 	}
@@ -173,8 +185,8 @@ func JournalEntries(c api.Client, uid string, last string, key []byte) error {
 	return nil
 }
 
-func StartGUI(c api.Client, key []byte) error {
-	return gui.Start(c, key)
+func StartGUI(c api.Client, s store.Store, key []byte) error {
+	return gui.Start(c, s, key)
 }
 
 func (app *App) Run() { app.cli.RunAndExitOnError() }
