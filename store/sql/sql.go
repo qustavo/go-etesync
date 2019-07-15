@@ -6,12 +6,6 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
-type Entry struct {
-	ID         uint   `gorm:"primary_key"`
-	JournalUID string `gorm:"index:journal_uid;not null"`
-	*api.Entry
-}
-
 type Store struct {
 	db *gorm.DB
 }
@@ -23,14 +17,10 @@ func NewStore(driver, dsn string) (*Store, error) {
 
 func (s *Store) Migrate() error {
 	err := s.db.AutoMigrate(
-		&api.Journal{},
 		&Entry{},
 	).Error
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return err
 }
 
 func (s *Store) Close() {
@@ -48,14 +38,6 @@ func (s *Store) first(where string, val interface{}, model interface{}) error {
 	}
 
 	return nil
-}
-
-func (s *Store) CreateJournal(j *api.Journal) error {
-	panic("not implemented")
-}
-
-func (s *Store) GetJournal() {
-	panic("not implemented")
 }
 
 func (s *Store) CreateEntry(j string, e *api.Entry) error {
