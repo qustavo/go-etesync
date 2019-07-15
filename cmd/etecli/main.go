@@ -14,113 +14,145 @@ import (
 	"github.com/urfave/cli"
 )
 
-type App struct {
-	cli    *cli.App
-	client *api.Client
+// Conf are the global flags
+type Conf struct {
+	email    string
+	password string
+	key      string
+	db       string
+	sync     bool
 }
 
-func NewApp() *App {
-	app := &App{}
-
-	app.cli = cli.NewApp()
-	app.cli.Version = "0.0.1"
-	app.cli.Name = "etecli"
-	app.cli.Usage = "ETESync cli tool"
-	app.cli.Flags = []cli.Flag{
-		cli.StringFlag{Name: "email", Usage: "login email", EnvVar: "ETESYNC_EMAIL"},
-		cli.StringFlag{Name: "password", Usage: "login password", EnvVar: "ETESYNC_EMAIL"},
-		cli.StringFlag{Name: "key", Usage: "Encryption key", EnvVar: "ETESYNC_KEY"},
-	}
-
-	app.cli.Commands = []cli.Command{
-		cli.Command{
-			Name: "journals", Usage: "Display available journals", Category: "api",
-			Action: func(ctx *cli.Context) error {
-				c, _, err := newClientFromCtx(ctx)
-				if err != nil {
-					return nil
-				}
-				return Journals(c)
-			},
-		},
-		cli.Command{
-			Name: "journal", Usage: "Retrieve a journal given a uid", Category: "api", ArgsUsage: "[uid]",
-			Action: func(ctx *cli.Context) error {
-				if ctx.NArg() != 1 {
-					return errors.New("missing [uid]")
-				}
-
-				c, key, err := newClientFromCtx(ctx)
-				if err != nil {
-					return nil
-				}
-
-				uid := ctx.Args()[0]
-				return Journal(c, uid, key)
-			},
-		},
-
-		cli.Command{
-			Name: "entries", Usage: "displays entries given a journal uid", Category: "api", ArgsUsage: "[uid]",
-			Flags: []cli.Flag{
-				cli.StringFlag{Name: "last", Usage: "get entries after <last> uid"},
-			},
-			Action: func(ctx *cli.Context) error {
-				if ctx.NArg() != 1 {
-					return errors.New("missing [uid]")
-				}
-
-				c, key, err := newClientFromCtx(ctx)
-				if err != nil {
-					return nil
-				}
-
-				uid := ctx.Args()[0]
-				last := ctx.String("last")
-				return JournalEntries(c, uid, last, key)
-			},
-		},
-		cli.Command{
-			Name: "gui", Usage: "Interactive gui",
-			Action: func(ctx *cli.Context) error {
-				c, key, err := newClientFromCtx(ctx)
-				if err != nil {
-					return err
-				}
-
-				s, err := sql.NewStore("sqlite3", "/tmp/etesync.db")
-				if err != nil {
-					return err
-				}
-
-				if err := s.Migrate(); err != nil {
-					return err
-				}
-
-				return StartGUI(c, s, key)
-			},
-		},
-	}
-
-	return app
+type EteCli struct {
+	cfg   *Conf
+	key   []byte
+	runFn func()
 }
 
-func newClientFromCtx(ctx *cli.Context) (*api.HTTPClient, []byte, error) {
+func New() *EteCli {
+	cfg := &Conf{}
+	ete := &EteCli{cfg: cfg}
+
+	app := &cli.App{
+		Name:    "etecli",
+		Usage:   "ETESync cli tool",
+		Version: "0.0.1",
+		Flags: []cli.Flag{
+			cli.StringFlag{Name: "email", Usage: "login email", EnvVar: "ETESYNC_EMAIL", Destination: &cfg.email},
+			cli.StringFlag{Name: "password", Usage: "login password", EnvVar: "ETESYNC_PASSWORD", Destination: &cfg.password},
+			cli.StringFlag{Name: "key", Usage: "encryption key", EnvVar: "ETESYNC_KEY", Destination: &cfg.key},
+			cli.StringFlag{Name: "db", Usage: "DB file path", Value: "~/.etecli.db", EnvVar: "ETESYNC_DB", Destination: &cfg.db},
+			cli.BoolFlag{Name: "sync", Usage: "force sync on start", Destination: &cfg.sync},
+		},
+
+		Before: func(ctx *cli.Context) error {
+			if cfg.email == "" {
+				return errors.New("missing `--email` flag")
+			}
+
+			if cfg.password == "" {
+				return errors.New("missing `--password` flag")
+			}
+
+			if cfg.key == "" {
+				return errors.New("missing `--key` flag")
+			}
+
+			var err error
+			ete.key, err = api.DeriveKey(cfg.email, []byte(cfg.key))
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+
+		Commands: []cli.Command{
+			cli.Command{
+				Name: "journals", Usage: "Display available journals", Category: "api",
+				Action: func(ctx *cli.Context) error {
+					c, err := newClientFromCtx(ctx)
+					if err != nil {
+						return nil
+					}
+					return ete.Journals(c)
+				},
+			},
+			cli.Command{
+				Name: "journal", Usage: "Retrieve a journal given a uid", Category: "api", ArgsUsage: "[uid]",
+				Action: func(ctx *cli.Context) error {
+					if ctx.NArg() != 1 {
+						return errors.New("missing [uid]")
+					}
+
+					c, err := newClientFromCtx(ctx)
+					if err != nil {
+						return err
+					}
+
+					uid := ctx.Args()[0]
+					return ete.Journal(c, uid)
+				},
+			},
+
+			cli.Command{
+				Name: "entries", Usage: "displays entries given a journal uid", Category: "api", ArgsUsage: "[uid]",
+				Flags: []cli.Flag{
+					cli.StringFlag{Name: "last", Usage: "get entries after <last> uid"},
+				},
+				Action: func(ctx *cli.Context) error {
+					if ctx.NArg() != 1 {
+						return errors.New("missing [uid]")
+					}
+
+					c, err := newClientFromCtx(ctx)
+					if err != nil {
+						return nil
+					}
+
+					uid := ctx.Args()[0]
+					last := ctx.String("last")
+					return ete.JournalEntries(c, uid, last)
+				},
+			},
+			cli.Command{
+				Name: "gui", Usage: "Interactive gui",
+				Action: func(ctx *cli.Context) error {
+					c, err := newClientFromCtx(ctx)
+					if err != nil {
+						return err
+					}
+
+					s, err := sql.NewStore("sqlite3", "/tmp/etesync.db")
+					if err != nil {
+						return err
+					}
+
+					if err := s.Migrate(); err != nil {
+						return err
+					}
+
+					return ete.StartGUI(c, s)
+				},
+			},
+		},
+	}
+
+	ete.runFn = app.RunAndExitOnError
+
+	return ete
+}
+
+func newClientFromCtx(ctx *cli.Context) (*api.HTTPClient, error) {
 	email := ctx.GlobalString("email")
 	cl, err := api.NewClient(email, ctx.GlobalString("password"))
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	key, err := api.DeriveKey(email, []byte(ctx.GlobalString("key")))
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return cl, key, nil
+	return cl, nil
 }
 
-func Journals(c api.Client) error {
+func (ete *EteCli) Journals(c api.Client) error {
 	js, err := c.Journals()
 	if err != nil {
 		return err
@@ -133,13 +165,13 @@ func Journals(c api.Client) error {
 	return nil
 }
 
-func Journal(c api.Client, uid string, key []byte) error {
+func (ete *EteCli) Journal(c api.Client, uid string) error {
 	j, err := c.Journal(uid)
 	if err != nil {
 		return err
 	}
 
-	cipher := crypto.New([]byte(uid), key)
+	cipher := crypto.New([]byte(uid), ete.key)
 	content, err := j.GetContent(cipher)
 	if err != nil {
 		return err
@@ -153,7 +185,7 @@ func Journal(c api.Client, uid string, key []byte) error {
 	return nil
 }
 
-func JournalEntries(c api.Client, uid string, last string, key []byte) error {
+func (ete *EteCli) JournalEntries(c api.Client, uid string, last string) error {
 	var arg *string = nil
 	if last != "" {
 		arg = &last
@@ -164,7 +196,7 @@ func JournalEntries(c api.Client, uid string, last string, key []byte) error {
 		return err
 	}
 
-	cipher := crypto.New([]byte(uid), key)
+	cipher := crypto.New([]byte(uid), ete.key)
 
 	for _, e := range es {
 		content, err := e.GetContent(cipher)
@@ -185,12 +217,12 @@ func JournalEntries(c api.Client, uid string, last string, key []byte) error {
 	return nil
 }
 
-func StartGUI(c api.Client, s store.Store, key []byte) error {
-	return gui.Start(c, s, key)
+func (ete *EteCli) StartGUI(c api.Client, s store.Store) error {
+	return gui.Start(c, s, ete.key)
 }
 
-func (app *App) Run() { app.cli.RunAndExitOnError() }
+func (ete *EteCli) Run() { ete.runFn() }
 
 func main() {
-	NewApp().Run()
+	New().Run()
 }

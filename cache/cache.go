@@ -53,6 +53,10 @@ func (c *Cache) SyncJournal(uid string) error {
 	return nil
 }
 
+func (c *Cache) Journals() (api.Journals, error) {
+	return c.api.Journals()
+}
+
 func (c *Cache) JournalEntries(uid string) (api.Entries, error) {
 	return c.store.GetEntries(uid)
 }
