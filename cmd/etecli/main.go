@@ -16,7 +16,7 @@ import (
 
 // Conf are the global flags
 type Conf struct {
-	server   string
+	url      string
 	email    string
 	password string
 	key      string
@@ -37,9 +37,9 @@ func New() *EteCli {
 	app := &cli.App{
 		Name:    "etecli",
 		Usage:   "ETESync cli tool",
-		Version: "0.0.1",
+		Version: "0.0.2",
 		Flags: []cli.Flag{
-			cli.StringFlag{Name: "server", Usage: "Server URL", EnvVar: "ETESYNC_SERVER", Value: "", Destination: &cfg.server},
+			cli.StringFlag{Name: "url", Usage: "Server URL", EnvVar: "ETESYNC_URL", Value: api.APIUrl, Destination: &cfg.url},
 			cli.StringFlag{Name: "email", Usage: "login email", EnvVar: "ETESYNC_EMAIL", Destination: &cfg.email},
 			cli.StringFlag{Name: "password", Usage: "login password", EnvVar: "ETESYNC_PASSWORD", Destination: &cfg.password},
 			cli.StringFlag{Name: "key", Usage: "encryption key", EnvVar: "ETESYNC_KEY", Destination: &cfg.key},
