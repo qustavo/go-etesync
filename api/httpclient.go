@@ -31,8 +31,13 @@ type HTTPClient struct {
 
 // NewClient returns a new HTTPClient given a username and password
 func NewClient(u, p string) (*HTTPClient, error) {
+	return NewClientWithURL(u, p, APIUrl)
+}
+
+// NewClientWithURL returns a new HTTPClient given a username, password and a custom server URL
+func NewClientWithURL(u, p, url string) (*HTTPClient, error) {
 	c := &HTTPClient{
-		apiurl:   APIUrl,
+		apiurl:   url,
 		username: u,
 		password: p,
 	}
