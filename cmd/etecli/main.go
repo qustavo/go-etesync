@@ -146,7 +146,7 @@ func New() *EteCli {
 
 func newClientFromCtx(ctx *cli.Context) (*api.HTTPClient, error) {
 	email := ctx.GlobalString("email")
-	cl, err := api.NewClientWithURL(email, ctx.GlobalString("password"), ctx.GlobalString("server"))
+	cl, err := api.NewClientWithURL(email, ctx.GlobalString("password"), ctx.GlobalString("url"))
 	if err != nil {
 		return nil, err
 	}
