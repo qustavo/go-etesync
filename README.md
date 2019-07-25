@@ -1,4 +1,4 @@
-# go-etesync
+# go-etesync [![Build Status](https://travis-ci.org/gchaincl/go-etesync.svg?branch=master)](https://travis-ci.org/gchaincl/go-etesync)
 Go implementation of Etesync protocol
 
 # Usage
