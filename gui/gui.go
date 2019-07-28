@@ -7,7 +7,6 @@ import (
 	"github.com/gchaincl/go-etesync/api"
 	"github.com/gchaincl/go-etesync/cache"
 	"github.com/gchaincl/go-etesync/crypto"
-	"github.com/gchaincl/go-etesync/store"
 	"github.com/gdamore/tcell"
 	"github.com/kofoworola/godate"
 	"github.com/laurent22/ical-go"
@@ -19,15 +18,15 @@ type GUI struct {
 	entries  *tview.Table
 	journals *tview.Table
 
-	api api.Client
-	key []byte
+	cache *cache.Cache
+	key   []byte
 }
 
-func NewGUI(client api.Client, key []byte) *GUI {
+func New(cache *cache.Cache, key []byte) *GUI {
 	gui := &GUI{
-		app: tview.NewApplication(),
-		api: client,
-		key: key,
+		app:   tview.NewApplication(),
+		cache: cache,
+		key:   key,
 	}
 
 	return gui
@@ -50,7 +49,7 @@ func (gui *GUI) newEntries() *tview.Table {
 }
 
 func (gui *GUI) newJournals() (*tview.Table, error) {
-	js, err := gui.api.Journals()
+	js, err := gui.cache.Journals()
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +100,7 @@ func setTableHeaders(t *tview.Table, headers ...string) {
 }
 
 func (gui *GUI) onJournalSelect(j *api.Journal) error {
-	es, err := gui.api.JournalEntries(j.UID, nil)
+	es, err := gui.cache.JournalEntries(j.UID)
 	if err != nil {
 		return err
 	}
@@ -192,11 +191,4 @@ func (gui *GUI) Start() error {
 		AddItem(gui.entries, 0, 2, false)
 
 	return gui.app.SetRoot(flex, true).Run()
-}
-
-func Start(c api.Client, s store.Store, key []byte) error {
-	if err := cache.New(s, c).Sync(); err != nil {
-		return err
-	}
-	return NewGUI(c, key).Start()
 }

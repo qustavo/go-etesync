@@ -3,11 +3,14 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os/user"
+	"path/filepath"
+	"strings"
 
 	"github.com/gchaincl/go-etesync/api"
+	"github.com/gchaincl/go-etesync/cache"
 	"github.com/gchaincl/go-etesync/crypto"
 	"github.com/gchaincl/go-etesync/gui"
-	"github.com/gchaincl/go-etesync/store"
 	"github.com/gchaincl/go-etesync/store/sql"
 	"github.com/laurent22/ical-go"
 	_ "github.com/mattn/go-sqlite3"
@@ -44,7 +47,6 @@ func New() *EteCli {
 			cli.StringFlag{Name: "password", Usage: "login password", EnvVar: "ETESYNC_PASSWORD", Destination: &cfg.password},
 			cli.StringFlag{Name: "key", Usage: "encryption key", EnvVar: "ETESYNC_KEY", Destination: &cfg.key},
 			cli.StringFlag{Name: "db", Usage: "DB file path", Value: "~/.etecli.db", EnvVar: "ETESYNC_DB", Destination: &cfg.db},
-			cli.BoolFlag{Name: "sync", Usage: "force sync on start", Destination: &cfg.sync},
 		},
 
 		Before: func(ctx *cli.Context) error {
@@ -72,7 +74,7 @@ func New() *EteCli {
 			cli.Command{
 				Name: "journals", Usage: "Display available journals", Category: "api",
 				Action: func(ctx *cli.Context) error {
-					c, err := newClientFromCtx(ctx)
+					c, err := newCacheFromCtx(ctx)
 					if err != nil {
 						return nil
 					}
@@ -98,42 +100,28 @@ func New() *EteCli {
 
 			cli.Command{
 				Name: "entries", Usage: "displays entries given a journal uid", Category: "api", ArgsUsage: "[uid]",
-				Flags: []cli.Flag{
-					cli.StringFlag{Name: "last", Usage: "get entries after <last> uid"},
-				},
 				Action: func(ctx *cli.Context) error {
 					if ctx.NArg() != 1 {
 						return errors.New("missing [uid]")
 					}
 
-					c, err := newClientFromCtx(ctx)
+					c, err := newCacheFromCtx(ctx)
 					if err != nil {
 						return nil
 					}
 
 					uid := ctx.Args()[0]
-					last := ctx.String("last")
-					return ete.JournalEntries(c, uid, last)
+					return ete.JournalEntries(c, uid)
 				},
 			},
 			cli.Command{
 				Name: "gui", Usage: "Interactive gui",
 				Action: func(ctx *cli.Context) error {
-					c, err := newClientFromCtx(ctx)
+					cache, err := newCacheFromCtx(ctx)
 					if err != nil {
 						return err
 					}
-
-					s, err := sql.NewStore("sqlite3", "/tmp/etesync.db")
-					if err != nil {
-						return err
-					}
-
-					if err := s.Migrate(); err != nil {
-						return err
-					}
-
-					return ete.StartGUI(c, s)
+					return ete.StartGUI(cache)
 				},
 			},
 		},
@@ -142,6 +130,29 @@ func New() *EteCli {
 	ete.runFn = app.RunAndExitOnError
 
 	return ete
+}
+
+func newCacheFromCtx(ctx *cli.Context) (*cache.Cache, error) {
+	client, err := newClientFromCtx(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	store, err := newSQLStoreFromCtx(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := store.Migrate(); err != nil {
+		return nil, err
+	}
+
+	c := cache.New(store, client)
+	if err := c.Sync(); err != nil {
+		return nil, err
+	}
+
+	return c, nil
+
 }
 
 func newClientFromCtx(ctx *cli.Context) (*api.HTTPClient, error) {
@@ -154,7 +165,33 @@ func newClientFromCtx(ctx *cli.Context) (*api.HTTPClient, error) {
 	return cl, nil
 }
 
-func (ete *EteCli) Journals(c api.Client) error {
+func newSQLStoreFromCtx(ctx *cli.Context) (*sql.Store, error) {
+	db := expandPath(ctx.GlobalString("db"))
+	store, err := sql.NewStore("sqlite3", db)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := store.Migrate(); err != nil {
+		return nil, err
+	}
+
+	return store, nil
+}
+
+func expandPath(path string) string {
+	usr, _ := user.Current()
+	dir := usr.HomeDir
+
+	if path == "~" {
+		return dir
+	} else if strings.HasPrefix(path, "~/") {
+		return filepath.Join(dir, path[2:])
+	}
+	return path
+}
+
+func (ete *EteCli) Journals(c *cache.Cache) error {
 	js, err := c.Journals()
 	if err != nil {
 		return err
@@ -187,13 +224,8 @@ func (ete *EteCli) Journal(c api.Client, uid string) error {
 	return nil
 }
 
-func (ete *EteCli) JournalEntries(c api.Client, uid string, last string) error {
-	var arg *string = nil
-	if last != "" {
-		arg = &last
-	}
-
-	es, err := c.JournalEntries(uid, arg)
+func (ete *EteCli) JournalEntries(c *cache.Cache, uid string) error {
+	es, err := c.JournalEntries(uid)
 	if err != nil {
 		return err
 	}
@@ -219,8 +251,8 @@ func (ete *EteCli) JournalEntries(c api.Client, uid string, last string) error {
 	return nil
 }
 
-func (ete *EteCli) StartGUI(c api.Client, s store.Store) error {
-	return gui.Start(c, s, ete.key)
+func (ete *EteCli) StartGUI(cache *cache.Cache) error {
+	return gui.New(cache, ete.key).Start()
 }
 
 func (ete *EteCli) Run() { ete.runFn() }
