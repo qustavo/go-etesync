@@ -15,6 +15,7 @@ import (
 
 type GUI struct {
 	app      *tview.Application
+	page     *tview.Pages
 	entries  *tview.Table
 	journals *tview.Table
 
@@ -28,6 +29,27 @@ func New(cache *cache.Cache, key []byte) *GUI {
 		cache: cache,
 		key:   key,
 	}
+
+	gui.page = tview.NewPages()
+	modal := tview.NewModal().
+		SetText(helpText).
+		AddButtons([]string{"OK"}).
+		SetDoneFunc(func(_ int, _ string) {
+			gui.page.HidePage("help")
+			gui.page.ShowPage("flex")
+		})
+	gui.page.AddPage("help", modal, true, false)
+
+	gui.app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyRune {
+			switch event.Rune() {
+			case 'h', '?':
+				gui.page.HidePage("flex")
+				gui.page.ShowPage("help")
+			}
+		}
+		return event
+	})
 
 	return gui
 }
@@ -190,5 +212,6 @@ func (gui *GUI) Start() error {
 		AddItem(gui.journals, 0, 1, true).
 		AddItem(gui.entries, 0, 2, false)
 
-	return gui.app.SetRoot(flex, true).Run()
+	gui.page.AddAndSwitchToPage("flex", flex, true)
+	return gui.app.SetRoot(gui.page, true).Run()
 }
