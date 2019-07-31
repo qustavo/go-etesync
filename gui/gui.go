@@ -42,6 +42,17 @@ func New(cache *cache.Cache, key []byte) *GUI {
 						gui.page.RemovePage("help")
 					})
 				gui.page.AddAndSwitchToPage("help", modal, true)
+			case 'q':
+				modal := tview.NewModal().
+					SetText("Are you sure you want to quit?").
+					AddButtons([]string{"No", "Yes"}).
+					SetDoneFunc(func(i int, _ string) {
+						if i == 1 {
+							gui.app.Stop()
+						}
+						gui.page.RemovePage("quit")
+					})
+				gui.page.AddAndSwitchToPage("quit", modal, true)
 			case 's':
 				txt := "syncing journals"
 				modal := tview.NewModal().

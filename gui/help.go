@@ -1,7 +1,8 @@
 package gui
 
 const helpText = `
-h, ?  : Opens help box     
+h, ?  : Opens help box    
+q     : Quit the app      
 s     : Syncs the journals
-Ctrl+C: Exits the app     
+Ctrl+C: Terminate the app 
 `
