@@ -31,21 +31,36 @@ func New(cache *cache.Cache, key []byte) *GUI {
 	}
 
 	gui.page = tview.NewPages()
-	modal := tview.NewModal().
-		SetText(helpText).
-		AddButtons([]string{"OK"}).
-		SetDoneFunc(func(_ int, _ string) {
-			gui.page.HidePage("help")
-			gui.page.ShowPage("flex")
-		})
-	gui.page.AddPage("help", modal, true, false)
-
 	gui.app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyRune {
 			switch event.Rune() {
 			case 'h', '?':
-				gui.page.HidePage("flex")
-				gui.page.ShowPage("help")
+				modal := tview.NewModal().
+					SetText(helpText).
+					AddButtons([]string{"OK"}).
+					SetDoneFunc(func(_ int, _ string) {
+						gui.page.RemovePage("help")
+					})
+				gui.page.AddAndSwitchToPage("help", modal, true)
+			case 's':
+				txt := "syncing journals"
+				modal := tview.NewModal().
+					SetText(txt).
+					SetDoneFunc(func(_ int, _ string) {
+						gui.page.RemovePage("sync")
+					})
+				gui.page.AddAndSwitchToPage("sync", modal, true)
+				go func() {
+					defer gui.app.Draw()
+					if err := gui.cache.Sync(); err != nil {
+						txt += ": " + err.Error()
+					} else {
+						txt += ": ok"
+					}
+					modal.SetText(txt).AddButtons([]string{"OK"})
+					gui.app.SetFocus(modal)
+					_ = gui.draw()
+				}()
 			}
 		}
 		return event
@@ -199,7 +214,7 @@ func (gui *GUI) onJournalSelect(j *api.Journal) error {
 	return nil
 }
 
-func (gui *GUI) Start() error {
+func (gui *GUI) draw() error {
 	gui.entries = gui.newEntries()
 
 	var err error
@@ -213,5 +228,12 @@ func (gui *GUI) Start() error {
 		AddItem(gui.entries, 0, 2, false)
 
 	gui.page.AddAndSwitchToPage("flex", flex, true)
+	return nil
+}
+
+func (gui *GUI) Start() error {
+	if err := gui.draw(); err != nil {
+		return err
+	}
 	return gui.app.SetRoot(gui.page, true).Run()
 }
