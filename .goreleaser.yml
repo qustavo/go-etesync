@@ -1,8 +1,6 @@
 builds:
 - main: ./cmd/etecli/main.go
   binary: etecli
-  env:
-  - CGO_ENABLED=0
 archives:
 - replacements:
     darwin: Darwin
