@@ -40,7 +40,7 @@ func New() *EteCli {
 	app := &cli.App{
 		Name:    "etecli",
 		Usage:   "ETESync cli tool",
-		Version: "0.0.5",
+		Version: "0.0.6",
 		Flags: []cli.Flag{
 			cli.StringFlag{Name: "url", Usage: "Server URL", EnvVar: "ETESYNC_URL", Value: api.APIUrl, Destination: &cfg.url},
 			cli.StringFlag{Name: "email", Usage: "login email", EnvVar: "ETESYNC_EMAIL", Destination: &cfg.email},
