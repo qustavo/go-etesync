@@ -1,6 +1,8 @@
 package cache
 
 import (
+	"fmt"
+
 	"github.com/gchaincl/go-etesync/api"
 	"github.com/gchaincl/go-etesync/store"
 )
@@ -16,7 +18,7 @@ func New(s store.Store, c api.Client) *Cache {
 
 // Sync syncs all the available journals
 func (c *Cache) Sync() error {
-	js, err := c.api.Journals()
+	js, err := c.Journals()
 	if err != nil {
 		return err
 	}
@@ -54,7 +56,21 @@ func (c *Cache) SyncJournal(uid string) error {
 }
 
 func (c *Cache) Journals() (api.Journals, error) {
-	return c.api.Journals()
+	js, err := c.api.Journals()
+	if err != nil {
+		return nil, err
+	}
+
+	var v2Journals api.Journals
+	for _, j := range js {
+		if j.Version != 2 {
+			fmt.Printf("[skip] Journal:%s (version %d != 2)\n", j.UID, j.Version)
+			continue
+		}
+		v2Journals = append(v2Journals, j)
+	}
+
+	return v2Journals, nil
 }
 
 func (c *Cache) JournalEntries(uid string) (api.Entries, error) {
